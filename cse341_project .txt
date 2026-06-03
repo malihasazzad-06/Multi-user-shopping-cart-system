@@ -1,0 +1,2123 @@
+﻿.MODEL SMALL
+
+
+new_line macro
+    mov ah,2
+    mov dl,0Ah
+    int 21h
+    mov ah,2
+    mov dl,0Dh
+    int 21h
+endm
+
+
+One_Digit_in macro in_var
+    mov ah,1
+    int 21h
+    sub al,30h
+    mov in_var,al
+endm
+
+
+One_Digit_out macro out_var
+    mov ah,2
+    mov dl,out_var
+    add dl,30h
+    int 21h
+endm
+
+
+Five_Digit_out macro out_var
+
+
+    mov one,0
+    mov two,0
+    mov three,0
+    mov four,0
+    mov five,0
+
+
+    mov dx,0
+    mov ax,out_var
+    mov bx,10
+    div bx
+    mov one,dx
+
+
+    mov dx,0
+    div bx
+    mov two,dx
+
+
+    mov dx,0
+    div bx
+    mov three,dx
+
+
+    mov dx,0
+    div bx
+    mov four,dx
+
+
+    mov dx,0
+    div bx
+    mov five,dx
+
+
+    mov ah,2
+    mov dx,five
+    add dl,30h
+    int 21h
+
+
+    mov ah,2
+    mov dx,four
+    add dl,30h
+    int 21h
+
+
+    mov ah,2
+    mov dx,three
+    add dl,30h
+    int 21h
+
+
+    mov ah,2
+    mov dx,two
+    add dl,30h
+    int 21h
+
+
+    mov ah,2
+    mov dx,one
+    add dl,30h
+    int 21h
+
+
+endm
+
+
+
+
+.STACK 100H
+
+
+.DATA
+
+
+; Output support variables
+one dw ?
+two dw ?
+three dw ?
+four dw ?
+five dw ?
+
+
+; Welcome and main menu strings
+welcome_str db "                            Welcome to SHOPPING SYSTEM$"
+
+
+main_menu_1 db "1. Login$"
+main_menu_2 db "2. Signup$"
+main_menu_3 db "3. Exit$"
+main_option_str db "Choose an Option: $"
+
+
+signup_success_str db "Signup Successful$"
+signup_full_str db "User Limit Full$"
+duplicate_user_str db "Username Already Exists$"
+
+
+login_success_str db "Login Successful$"
+invalid_login_str db "Invalid Username or Password$"
+wrong_pass_str db "Wrong Password$"
+login_restrict_str db "Access Restricted After 3 Failed Attempts$"
+account_block_str db "This User is Blocked Due to Multiple Failed Attempts$"
+
+
+enter_username_str db "Enter Username - exactly 5 characters: $"
+enter_password_str db "Enter Password - exactly 4 characters: $"
+
+
+enter_admin_key_str db "Enter Admin Keyword: $"
+wrong_admin_key_str db "Wrong Admin Keyword. Admin Signup Denied$"
+
+
+; Shopping menu strings
+shop_menu_1 db "1. Browse Products$"
+shop_menu_2 db "2. Add Item to Cart$"
+shop_menu_3 db "3. Remove Item from Cart$"
+shop_menu_4 db "4. View Cart$"
+shop_menu_5 db "5. Calculate Total Bill$"
+shop_menu_6 db "6. Place Order$"
+shop_menu_7 db "7. Order History$"
+shop_menu_8 db "8. Logout$"
+
+
+invalid_option_str db "No Available Service in this Option$"
+logout_str db "Logged Out Successfully$"
+
+
+; Product strings
+product_header_str db "Available Products:$"
+product_row_1 db "1. Rice       Price: 00500$"
+product_row_2 db "2. Oil        Price: 01200$"
+product_row_3 db "3. Milk       Price: 00800$"
+product_row_4 db "4. Bread      Price: 01500$"
+product_row_5 db "5. Eggs       Price: 00300$"
+
+
+product_name_1 db "Rice$"
+product_name_2 db "Oil$"
+product_name_3 db "Milk$"
+product_name_4 db "Bread$"
+product_name_5 db "Eggs$"
+
+
+enter_product_str db "Enter Product ID: $"
+enter_qty_str db "Enter Quantity: $"
+item_added_str db "Item Added to Cart$"
+invalid_product_str db "Invalid Product ID$"
+invalid_qty_str db "Invalid Quantity$"
+qty_limit_str db "Quantity Limit Exceeded. Max 9 Allowed$"
+
+
+; Remove cart strings
+remove_choice_str db "1. Decrease Quantity  2. Remove Full Item: $"
+remove_success_str db "Item Removed Successfully$"
+not_in_cart_str db "This Product is Not in Cart$"
+
+
+; Cart strings
+cart_header_str db "Your Cart:$"
+cart_empty_str db "Cart is Empty$"
+product_str db "Product: $"
+qty_str db " Quantity: $"
+price_str db " Price: $"
+total_bill_str db "Total Bill: $"
+
+
+; Order history strings
+order_placed_str db "Order Placed Successfully$"
+history_header_str db "Order History:$"
+no_history_str db "No Order History Yet$"
+history_full_str db "Order History Full. Maximum 5 Orders Stored$"
+order_no_str db "Order #$"
+history_total_str db "Total: $"
+
+
+; Input and control variables
+Current_Option db 0
+Current_Product db 0
+Current_Qty db 0
+Current_Remove_Option db 0
+
+
+Current_User db 0
+User_Count db 0
+User_Scan db 0
+Login_Attempt db 0
+
+
+Current_Price dw 0
+Current_Total dw 0
+Cart_Offset dw 0
+Cart_Base_Offset dw 0
+Order_Base_Offset dw 0
+
+
+Product_Index db 0
+Item_Found db 0
+
+
+Order_Index db 0
+History_Order_Index db 0
+Current_Order_Count db 0
+
+
+; Temporary input arrays
+TEMP_USERNAME db 5 dup(0)
+TEMP_PASSWORD db 4 dup(0)
+
+
+; Admin security
+ADMIN_NAME db "ADMIN"
+ADMIN_KEY db "9999"
+
+
+; Main user arrays
+; No default user.
+; Maximum 10 users.
+; Username length = 5 characters.
+; Password length = 4 characters.
+USERNAME_ARRAY db 50 dup(0)
+PASSWORD_ARRAY db 40 dup(0)
+
+
+FAILED_LOGIN_COUNT db 10 dup(0)
+
+
+; Product price array
+PRICE_ARRAY dw 500,1200,800,1500,300
+
+
+; Cart quantity array
+; 10 users * 5 products = 50 bytes
+CART_QTY_ARRAY db 50 dup(0)
+
+
+; Order count for each user
+ORDER_COUNT_ARRAY db 10 dup(0)
+
+
+; Order total array
+; 10 users * 5 orders = 50 word values
+ORDER_TOTAL_ARRAY dw 50 dup(0)
+
+
+; Order quantity array
+; 10 users * 5 orders * 5 products = 250 bytes
+ORDER_QTY_ARRAY db 250 dup(0)
+
+
+
+
+.CODE
+
+
+MAIN PROC
+
+
+    mov ax,@DATA
+    mov ds,ax
+
+
+    mov ah,9
+    lea dx,welcome_str
+    int 21h
+
+
+    new_line
+    new_line
+
+
+SYSTEM_START:
+
+
+    mov ah,9
+    lea dx,main_menu_1
+    int 21h
+    new_line
+
+
+    mov ah,9
+    lea dx,main_menu_2
+    int 21h
+    new_line
+
+
+    mov ah,9
+    lea dx,main_menu_3
+    int 21h
+    new_line
+
+
+    mov ah,9
+    lea dx,main_option_str
+    int 21h
+
+
+    One_Digit_in Current_Option
+    new_line
+
+
+    cmp Current_Option,1
+    je DO_LOGIN
+
+
+    cmp Current_Option,2
+    je DO_SIGNUP
+
+
+    cmp Current_Option,3
+    je EXIT_PROGRAM
+
+
+    mov ah,9
+    lea dx,invalid_option_str
+    int 21h
+    new_line
+    new_line
+    jmp SYSTEM_START
+
+
+
+
+DO_SIGNUP:
+    call SIGNUP_USER
+    new_line
+    jmp SYSTEM_START
+
+
+
+
+DO_LOGIN:
+    call LOGIN_USER
+    cmp al,1
+    je SHOPPING_MENU
+
+
+    new_line
+    jmp SYSTEM_START
+
+
+
+
+SHOPPING_MENU:
+
+
+    new_line
+
+
+    mov ah,9
+    lea dx,shop_menu_1
+    int 21h
+    new_line
+
+
+    mov ah,9
+    lea dx,shop_menu_2
+    int 21h
+    new_line
+
+
+    mov ah,9
+    lea dx,shop_menu_3
+    int 21h
+    new_line
+
+
+    mov ah,9
+    lea dx,shop_menu_4
+    int 21h
+    new_line
+
+
+    mov ah,9
+    lea dx,shop_menu_5
+    int 21h
+    new_line
+
+
+    mov ah,9
+    lea dx,shop_menu_6
+    int 21h
+    new_line
+
+
+    mov ah,9
+    lea dx,shop_menu_7
+    int 21h
+    new_line
+
+
+    mov ah,9
+    lea dx,shop_menu_8
+    int 21h
+    new_line
+
+
+    mov ah,9
+    lea dx,main_option_str
+    int 21h
+
+
+    One_Digit_in Current_Option
+    new_line
+
+
+    cmp Current_Option,1
+    je MENU_BROWSE
+
+
+    cmp Current_Option,2
+    je MENU_ADD
+
+
+    cmp Current_Option,3
+    je MENU_REMOVE
+
+
+    cmp Current_Option,4
+    je MENU_VIEW_CART
+
+
+    cmp Current_Option,5
+    je MENU_TOTAL
+
+
+    cmp Current_Option,6
+    je MENU_PLACE_ORDER
+
+
+    cmp Current_Option,7
+    je MENU_HISTORY
+
+
+    cmp Current_Option,8
+    je MENU_LOGOUT
+
+
+    mov ah,9
+    lea dx,invalid_option_str
+    int 21h
+    new_line
+    jmp SHOPPING_MENU
+
+
+
+
+MENU_BROWSE:
+    call BROWSE_PRODUCTS
+    jmp SHOPPING_MENU
+
+
+MENU_ADD:
+    call ADD_TO_CART
+    jmp SHOPPING_MENU
+
+
+MENU_REMOVE:
+    call REMOVE_FROM_CART
+    jmp SHOPPING_MENU
+
+
+MENU_VIEW_CART:
+    call VIEW_CART
+    jmp SHOPPING_MENU
+
+
+MENU_TOTAL:
+    call CALCULATE_TOTAL
+    jmp SHOPPING_MENU
+
+
+MENU_PLACE_ORDER:
+    call PLACE_ORDER
+    jmp SHOPPING_MENU
+
+
+MENU_HISTORY:
+    call ORDER_HISTORY
+    jmp SHOPPING_MENU
+
+
+MENU_LOGOUT:
+    mov ah,9
+    lea dx,logout_str
+    int 21h
+    new_line
+    new_line
+    jmp SYSTEM_START
+
+
+
+
+EXIT_PROGRAM:
+    mov ax,4C00H
+    int 21H
+
+
+MAIN ENDP
+
+
+; Read username:  5 chars
+
+
+READ_USERNAME PROC
+
+
+    mov si,0
+    mov cx,5
+
+
+READ_USERNAME_LOOP:
+    mov ah,1
+    int 21h
+    mov TEMP_USERNAME[si],al
+    inc si
+    loop READ_USERNAME_LOOP
+
+
+    ret
+
+
+READ_USERNAME ENDP
+
+
+; Read password or admin key:  4 chars
+
+
+READ_PASSWORD PROC
+
+
+    mov si,0
+    mov cx,4
+
+
+READ_PASSWORD_LOOP:
+    mov ah,1
+    int 21h
+    mov TEMP_PASSWORD[si],al
+    inc si
+    loop READ_PASSWORD_LOOP
+
+
+    ret
+
+
+READ_PASSWORD ENDP
+
+
+
+
+
+
+; Find username
+; AL = 1 if found
+; AL = 0 if not found
+; User_Scan holds found user index
+
+
+FIND_USER PROC
+
+
+    mov User_Scan,0
+
+
+FIND_USER_NEXT:
+
+
+    mov al,User_Scan
+    cmp al,User_Count
+    jae FIND_USER_NOT_FOUND
+
+
+    mov al,User_Scan
+    mov ah,0
+    mov bl,5
+    mul bl
+    mov bx,ax
+
+
+    mov si,0
+    mov cx,5
+
+
+FIND_USER_COMPARE:
+    mov al,TEMP_USERNAME[si]
+    cmp al,USERNAME_ARRAY[bx+si]
+    jne FIND_USER_NO_MATCH
+
+
+    inc si
+    loop FIND_USER_COMPARE
+
+
+    mov al,1
+    ret
+
+
+
+
+FIND_USER_NO_MATCH:
+    inc User_Scan
+    jmp FIND_USER_NEXT
+
+
+
+
+FIND_USER_NOT_FOUND:
+    mov al,0
+    ret
+
+
+FIND_USER ENDP
+
+
+; Check password for User_Scan
+; AL = 1 if matched
+; AL = 0 if not matched
+
+
+CHECK_PASSWORD PROC
+
+
+    mov al,User_Scan
+    mov ah,0
+    mov bl,4
+    mul bl
+    mov bx,ax
+
+
+    mov si,0
+    mov cx,4
+
+
+CHECK_PASSWORD_LOOP:
+    mov al,TEMP_PASSWORD[si]
+    cmp al,PASSWORD_ARRAY[bx+si]
+    jne CHECK_PASSWORD_WRONG
+
+
+    inc si
+    loop CHECK_PASSWORD_LOOP
+
+
+    mov al,1
+    ret
+
+
+
+
+CHECK_PASSWORD_WRONG:
+    mov al,0
+    ret
+
+
+CHECK_PASSWORD ENDP
+
+
+; Check if username is ADMIN
+; AL = 1 if ADMIN
+; AL = 0 if not ADMIN
+
+
+CHECK_ADMIN_USERNAME PROC
+
+
+    mov si,0
+    mov cx,5
+
+
+CHECK_ADMIN_USERNAME_LOOP:
+    mov al,TEMP_USERNAME[si]
+    cmp al,ADMIN_NAME[si]
+    jne NOT_ADMIN_USERNAME
+
+
+    inc si
+    loop CHECK_ADMIN_USERNAME_LOOP
+
+
+    mov al,1
+    ret
+
+
+
+
+NOT_ADMIN_USERNAME:
+    mov al,0
+    ret
+
+
+CHECK_ADMIN_USERNAME ENDP
+
+
+; Check admin keyword
+; Admin keyword = 9999
+; AL = 1 if correct
+; AL = 0 if wrong
+
+
+CHECK_ADMIN_KEY PROC
+
+
+    mov si,0
+    mov cx,4
+
+
+CHECK_ADMIN_KEY_LOOP:
+    mov al,TEMP_PASSWORD[si]
+    cmp al,ADMIN_KEY[si]
+    jne WRONG_ADMIN_KEY
+
+
+    inc si
+    loop CHECK_ADMIN_KEY_LOOP
+
+
+    mov al,1
+    ret
+
+
+
+
+WRONG_ADMIN_KEY:
+    mov al,0
+    ret
+
+
+CHECK_ADMIN_KEY ENDP
+
+
+
+
+
+
+; Signup User
+; If username is ADMIN, admin keyword is required.
+
+
+
+
+SIGNUP_USER PROC
+
+
+    mov al,User_Count
+    cmp al,10
+    jae SIGNUP_FULL
+
+
+    mov ah,9
+    lea dx,enter_username_str
+    int 21h
+
+
+    call READ_USERNAME
+    new_line
+
+
+    call FIND_USER
+    cmp al,1
+    je SIGNUP_DUPLICATE
+
+
+    ; Check if username is ADMIN
+    call CHECK_ADMIN_USERNAME
+    cmp al,1
+    jne NORMAL_SIGNUP_PASSWORD
+
+
+    ; If username is ADMIN, ask admin keyword first
+    mov ah,9
+    lea dx,enter_admin_key_str
+    int 21h
+
+
+    call READ_PASSWORD
+    new_line
+
+
+    call CHECK_ADMIN_KEY
+    cmp al,1
+    jne ADMIN_KEY_FAILED
+
+
+
+
+NORMAL_SIGNUP_PASSWORD:
+
+
+    mov ah,9
+    lea dx,enter_password_str
+    int 21h
+
+
+    call READ_PASSWORD
+    new_line
+
+
+    ; Store username
+    mov al,User_Count
+    mov ah,0
+    mov bl,5
+    mul bl
+    mov bx,ax
+
+
+    mov si,0
+    mov cx,5
+
+
+SIGNUP_STORE_USERNAME:
+    mov al,TEMP_USERNAME[si]
+    mov USERNAME_ARRAY[bx+si],al
+    inc si
+    loop SIGNUP_STORE_USERNAME
+
+
+    ; Store password
+    mov al,User_Count
+    mov ah,0
+    mov bl,4
+    mul bl
+    mov bx,ax
+
+
+    mov si,0
+    mov cx,4
+
+
+SIGNUP_STORE_PASSWORD:
+    mov al,TEMP_PASSWORD[si]
+    mov PASSWORD_ARRAY[bx+si],al
+    inc si
+    loop SIGNUP_STORE_PASSWORD
+
+
+    ; Initialize failed count and order count
+    mov al,User_Count
+    mov ah,0
+    mov si,ax
+    mov byte ptr FAILED_LOGIN_COUNT[si],0
+    mov byte ptr ORDER_COUNT_ARRAY[si],0
+
+
+    ; Clear cart for new user
+    mov al,User_Count
+    mov ah,0
+    mov bl,5
+    mul bl
+    mov si,ax
+    mov cx,5
+
+
+SIGNUP_CLEAR_CART:
+    mov byte ptr CART_QTY_ARRAY[si],0
+    inc si
+    loop SIGNUP_CLEAR_CART
+
+
+    inc User_Count
+
+
+    mov ah,9
+    lea dx,signup_success_str
+    int 21h
+    new_line
+    ret
+
+
+
+
+ADMIN_KEY_FAILED:
+    mov ah,9
+    lea dx,wrong_admin_key_str
+    int 21h
+    new_line
+    ret
+
+
+
+
+SIGNUP_DUPLICATE:
+    mov ah,9
+    lea dx,duplicate_user_str
+    int 21h
+    new_line
+    ret
+
+
+
+
+SIGNUP_FULL:
+    mov ah,9
+    lea dx,signup_full_str
+    int 21h
+    new_line
+    ret
+
+
+SIGNUP_USER ENDP
+
+
+
+
+; Login User
+; AL = 1 if login successful
+; AL = 0 if login failed
+
+
+LOGIN_USER PROC
+
+
+    mov Login_Attempt,0
+
+
+LOGIN_USER_AGAIN:
+
+
+    mov ah,9
+    lea dx,enter_username_str
+    int 21h
+
+
+    call READ_USERNAME
+    new_line
+
+
+    call FIND_USER
+    cmp al,1
+    jne LOGIN_BAD_DATA
+
+
+    ; Check if user is blocked
+    mov al,User_Scan
+    mov ah,0
+    mov si,ax
+
+
+    mov al,FAILED_LOGIN_COUNT[si]
+    cmp al,3
+    jae LOGIN_USER_BLOCKED
+
+
+    mov ah,9
+    lea dx,enter_password_str
+    int 21h
+
+
+    call READ_PASSWORD
+    new_line
+
+
+    call CHECK_PASSWORD
+    cmp al,1
+    je LOGIN_OK
+
+
+    mov ah,9
+    lea dx,wrong_pass_str
+    int 21h
+    new_line
+
+
+    mov al,User_Scan
+    mov ah,0
+    mov si,ax
+    inc byte ptr FAILED_LOGIN_COUNT[si]
+
+
+    mov al,FAILED_LOGIN_COUNT[si]
+    cmp al,3
+    jae LOGIN_USER_BLOCKED
+
+
+    inc Login_Attempt
+    cmp Login_Attempt,3
+    jl LOGIN_USER_AGAIN
+
+
+    mov ah,9
+    lea dx,login_restrict_str
+    int 21h
+    new_line
+
+
+    mov al,0
+    ret
+
+
+
+
+LOGIN_BAD_DATA:
+    mov ah,9
+    lea dx,invalid_login_str
+    int 21h
+    new_line
+
+
+    inc Login_Attempt
+    cmp Login_Attempt,3
+    jl LOGIN_USER_AGAIN
+
+
+    mov ah,9
+    lea dx,login_restrict_str
+    int 21h
+    new_line
+
+
+    mov al,0
+    ret
+
+
+
+
+LOGIN_USER_BLOCKED:
+    mov ah,9
+    lea dx,account_block_str
+    int 21h
+    new_line
+
+
+    mov al,0
+    ret
+
+
+
+
+LOGIN_OK:
+    mov al,User_Scan
+    mov Current_User,al
+
+
+    mov ah,0
+    mov si,ax
+    mov byte ptr FAILED_LOGIN_COUNT[si],0
+
+
+    mov ah,9
+    lea dx,login_success_str
+    int 21h
+    new_line
+
+
+    mov al,1
+    ret
+
+
+LOGIN_USER ENDP
+
+
+
+
+; Browse Products
+
+
+BROWSE_PRODUCTS PROC
+
+
+    mov ah,9
+    lea dx,product_header_str
+    int 21h
+    new_line
+
+
+    mov ah,9
+    lea dx,product_row_1
+    int 21h
+    new_line
+
+
+    mov ah,9
+    lea dx,product_row_2
+    int 21h
+    new_line
+
+
+    mov ah,9
+    lea dx,product_row_3
+    int 21h
+    new_line
+
+
+    mov ah,9
+    lea dx,product_row_4
+    int 21h
+    new_line
+
+
+    mov ah,9
+    lea dx,product_row_5
+    int 21h
+    new_line
+
+
+    ret
+
+
+BROWSE_PRODUCTS ENDP
+
+
+
+
+
+
+; Get product price
+; Current_Product = product ID
+; Current_Price = price
+
+
+
+
+GET_PRODUCT_PRICE PROC
+
+
+    mov al,Current_Product
+    dec al
+    mov ah,0
+    mov bl,2
+    mul bl
+
+
+    mov si,ax
+    mov ax,PRICE_ARRAY[si]
+    mov Current_Price,ax
+
+
+    ret
+
+
+GET_PRODUCT_PRICE ENDP
+
+
+
+
+
+
+; Print product name
+
+
+
+
+PRINT_PRODUCT_NAME PROC
+
+
+    mov al,Current_Product
+
+
+    cmp al,1
+    je PRINT_NAME_1
+
+
+    cmp al,2
+    je PRINT_NAME_2
+
+
+    cmp al,3
+    je PRINT_NAME_3
+
+
+    cmp al,4
+    je PRINT_NAME_4
+
+
+    cmp al,5
+    je PRINT_NAME_5
+
+
+    jmp PRINT_NAME_EXIT
+
+
+
+
+PRINT_NAME_1:
+    mov ah,9
+    lea dx,product_name_1
+    int 21h
+    jmp PRINT_NAME_EXIT
+
+
+
+
+PRINT_NAME_2:
+    mov ah,9
+    lea dx,product_name_2
+    int 21h
+    jmp PRINT_NAME_EXIT
+
+
+
+
+PRINT_NAME_3:
+    mov ah,9
+    lea dx,product_name_3
+    int 21h
+    jmp PRINT_NAME_EXIT
+
+
+
+
+PRINT_NAME_4:
+    mov ah,9
+    lea dx,product_name_4
+    int 21h
+    jmp PRINT_NAME_EXIT
+
+
+
+
+PRINT_NAME_5:
+    mov ah,9
+    lea dx,product_name_5
+    int 21h
+
+
+
+
+PRINT_NAME_EXIT:
+    ret
+
+
+PRINT_PRODUCT_NAME ENDP
+
+
+
+
+
+
+; Get cart offset
+; Cart_Offset = Current_User * 5 + Product_Index
+
+
+
+
+GET_CART_OFFSET PROC
+
+
+    mov al,Current_User
+    mov ah,0
+    mov bl,5
+    mul bl
+
+
+    mov si,ax
+
+
+    mov al,Current_Product
+    dec al
+    mov ah,0
+
+
+    add si,ax
+    mov Cart_Offset,si
+
+
+    ret
+
+
+GET_CART_OFFSET ENDP
+
+
+
+
+
+
+; Add item to cart
+
+
+
+
+ADD_TO_CART PROC
+
+
+    call BROWSE_PRODUCTS
+
+
+    mov ah,9
+    lea dx,enter_product_str
+    int 21h
+
+
+    One_Digit_in Current_Product
+    new_line
+
+
+    cmp Current_Product,1
+    jb ADD_INVALID_PRODUCT
+
+
+    cmp Current_Product,5
+    ja ADD_INVALID_PRODUCT
+
+
+    mov ah,9
+    lea dx,enter_qty_str
+    int 21h
+
+
+    One_Digit_in Current_Qty
+    new_line
+
+
+    cmp Current_Qty,1
+    jb ADD_INVALID_QTY
+
+
+    cmp Current_Qty,9
+    ja ADD_INVALID_QTY
+
+
+    call GET_CART_OFFSET
+    mov si,Cart_Offset
+
+
+    mov al,CART_QTY_ARRAY[si]
+    add al,Current_Qty
+
+
+    cmp al,10
+    jae ADD_QTY_LIMIT
+
+
+    mov CART_QTY_ARRAY[si],al
+
+
+    mov ah,9
+    lea dx,item_added_str
+    int 21h
+    new_line
+    ret
+
+
+
+
+ADD_INVALID_PRODUCT:
+    mov ah,9
+    lea dx,invalid_product_str
+    int 21h
+    new_line
+    ret
+
+
+
+
+ADD_INVALID_QTY:
+    mov ah,9
+    lea dx,invalid_qty_str
+    int 21h
+    new_line
+    ret
+
+
+
+
+ADD_QTY_LIMIT:
+    mov ah,9
+    lea dx,qty_limit_str
+    int 21h
+    new_line
+    ret
+
+
+ADD_TO_CART ENDP
+
+
+
+
+
+
+; Remove item from cart
+
+
+
+
+REMOVE_FROM_CART PROC
+
+
+    call VIEW_CART
+
+
+    cmp Item_Found,0
+    je REMOVE_EXIT
+
+
+    mov ah,9
+    lea dx,enter_product_str
+    int 21h
+
+
+    One_Digit_in Current_Product
+    new_line
+
+
+    cmp Current_Product,1
+    jb REMOVE_INVALID_PRODUCT
+
+
+    cmp Current_Product,5
+    ja REMOVE_INVALID_PRODUCT
+
+
+    call GET_CART_OFFSET
+    mov si,Cart_Offset
+
+
+    mov al,CART_QTY_ARRAY[si]
+    cmp al,0
+    je REMOVE_NOT_IN_CART
+
+
+    mov ah,9
+    lea dx,remove_choice_str
+    int 21h
+
+
+    One_Digit_in Current_Remove_Option
+    new_line
+
+
+    cmp Current_Remove_Option,1
+    je REMOVE_DECREASE
+
+
+    cmp Current_Remove_Option,2
+    je REMOVE_FULL
+
+
+    mov ah,9
+    lea dx,invalid_option_str
+    int 21h
+    new_line
+    ret
+
+
+
+
+REMOVE_DECREASE:
+    mov ah,9
+    lea dx,enter_qty_str
+    int 21h
+
+
+    One_Digit_in Current_Qty
+    new_line
+
+
+    cmp Current_Qty,1
+    jb REMOVE_INVALID_QTY
+
+
+    mov si,Cart_Offset
+    mov al,CART_QTY_ARRAY[si]
+
+
+    cmp Current_Qty,al
+    jae REMOVE_FULL
+
+
+    sub al,Current_Qty
+    mov CART_QTY_ARRAY[si],al
+
+
+    mov ah,9
+    lea dx,remove_success_str
+    int 21h
+    new_line
+    ret
+
+
+
+
+REMOVE_FULL:
+    mov si,Cart_Offset
+    mov byte ptr CART_QTY_ARRAY[si],0
+
+
+    mov ah,9
+    lea dx,remove_success_str
+    int 21h
+    new_line
+    ret
+
+
+
+
+REMOVE_INVALID_PRODUCT:
+    mov ah,9
+    lea dx,invalid_product_str
+    int 21h
+    new_line
+    ret
+
+
+
+
+REMOVE_INVALID_QTY:
+    mov ah,9
+    lea dx,invalid_qty_str
+    int 21h
+    new_line
+    ret
+
+
+
+
+REMOVE_NOT_IN_CART:
+    mov ah,9
+    lea dx,not_in_cart_str
+    int 21h
+    new_line
+    ret
+
+
+
+
+REMOVE_EXIT:
+    ret
+
+
+REMOVE_FROM_CART ENDP
+
+
+
+
+
+
+; View Cart
+
+
+
+
+VIEW_CART PROC
+
+
+    mov Item_Found,0
+
+
+    mov ah,9
+    lea dx,cart_header_str
+    int 21h
+    new_line
+
+
+    mov Product_Index,1
+
+
+VIEW_CART_LOOP:
+
+
+    mov al,Product_Index
+    cmp al,6
+    jae VIEW_CART_DONE
+
+
+    mov al,Product_Index
+    mov Current_Product,al
+
+
+    call GET_CART_OFFSET
+    mov si,Cart_Offset
+
+
+    mov al,CART_QTY_ARRAY[si]
+    cmp al,0
+    je VIEW_CART_NEXT
+
+
+    mov Item_Found,1
+    mov Current_Qty,al
+
+
+    mov ah,9
+    lea dx,product_str
+    int 21h
+
+
+    call PRINT_PRODUCT_NAME
+
+
+    mov ah,9
+    lea dx,qty_str
+    int 21h
+
+
+    One_Digit_out Current_Qty
+
+
+    mov ah,9
+    lea dx,price_str
+    int 21h
+
+
+    call GET_PRODUCT_PRICE
+    Five_Digit_out Current_Price
+
+
+    new_line
+
+
+
+
+VIEW_CART_NEXT:
+    inc Product_Index
+    jmp VIEW_CART_LOOP
+
+
+
+
+VIEW_CART_DONE:
+    cmp Item_Found,0
+    jne VIEW_CART_EXIT
+
+
+    mov ah,9
+    lea dx,cart_empty_str
+    int 21h
+    new_line
+
+
+
+
+VIEW_CART_EXIT:
+    ret
+
+
+VIEW_CART ENDP
+
+
+
+
+
+
+; Calculate Total Bill
+
+
+
+
+CALCULATE_TOTAL PROC
+
+
+    mov Current_Total,0
+    mov Product_Index,1
+
+
+TOTAL_LOOP:
+
+
+    mov al,Product_Index
+    cmp al,6
+    jae TOTAL_DONE
+
+
+    mov al,Product_Index
+    mov Current_Product,al
+
+
+    call GET_CART_OFFSET
+    mov si,Cart_Offset
+
+
+    mov al,CART_QTY_ARRAY[si]
+    cmp al,0
+    je TOTAL_NEXT
+
+
+    mov Current_Qty,al
+
+
+    call GET_PRODUCT_PRICE
+
+
+    mov ax,Current_Price
+    mov bl,Current_Qty
+    mov bh,0
+    mul bx
+
+
+    add Current_Total,ax
+
+
+
+
+TOTAL_NEXT:
+    inc Product_Index
+    jmp TOTAL_LOOP
+
+
+
+
+TOTAL_DONE:
+    mov ah,9
+    lea dx,total_bill_str
+    int 21h
+
+
+    Five_Digit_out Current_Total
+    new_line
+
+
+    ret
+
+
+CALCULATE_TOTAL ENDP
+
+
+
+
+;
+; Clear Current User Cart
+
+
+
+
+CLEAR_CURRENT_CART PROC
+
+
+    mov al,Current_User
+    mov ah,0
+    mov bl,5
+    mul bl
+
+
+    mov si,ax
+    mov cx,5
+
+
+CLEAR_CART_LOOP:
+    mov byte ptr CART_QTY_ARRAY[si],0
+    inc si
+    loop CLEAR_CART_LOOP
+
+
+    ret
+
+
+CLEAR_CURRENT_CART ENDP
+
+
+
+
+
+
+; Place Order
+
+
+
+
+PLACE_ORDER PROC
+
+
+    call CALCULATE_TOTAL
+
+
+    cmp Current_Total,0
+    je PLACE_ORDER_EMPTY
+
+
+    mov al,Current_User
+    mov ah,0
+    mov si,ax
+
+
+    mov al,ORDER_COUNT_ARRAY[si]
+    cmp al,5
+    jae PLACE_ORDER_HISTORY_FULL
+
+
+    mov Order_Index,al
+
+
+    ; Store order total
+    mov al,Current_User
+    mov ah,0
+    mov bl,5
+    mul bl
+
+
+    mov bl,Order_Index
+    mov bh,0
+    add ax,bx
+
+
+    shl ax,1
+    mov si,ax
+
+
+    mov ax,Current_Total
+    mov ORDER_TOTAL_ARRAY[si],ax
+
+
+    ; Calculate order quantity base offset:
+    ; user * 25 + order_index * 5
+    mov al,Current_User
+    mov ah,0
+    mov bl,25
+    mul bl
+    mov bx,ax
+
+
+    mov al,Order_Index
+    mov ah,0
+    mov cl,5
+    mul cl
+
+
+    add bx,ax
+    mov Order_Base_Offset,bx
+
+
+    ; Calculate cart base offset: user * 5
+    mov al,Current_User
+    mov ah,0
+    mov bl,5
+    mul bl
+    mov Cart_Base_Offset,ax
+
+
+    ; Copy cart quantities into order history
+    mov Product_Index,0
+
+
+PLACE_COPY_LOOP:
+    cmp Product_Index,5
+    jae PLACE_COPY_DONE
+
+
+    mov al,Product_Index
+    mov ah,0
+
+
+    mov si,Cart_Base_Offset
+    add si,ax
+    mov dl,CART_QTY_ARRAY[si]
+
+
+    mov si,Order_Base_Offset
+    add si,ax
+    mov ORDER_QTY_ARRAY[si],dl
+
+
+    inc Product_Index
+    jmp PLACE_COPY_LOOP
+
+
+
+
+PLACE_COPY_DONE:
+
+
+    ; Increase order count
+    mov al,Current_User
+    mov ah,0
+    mov si,ax
+    inc byte ptr ORDER_COUNT_ARRAY[si]
+
+
+    call CLEAR_CURRENT_CART
+
+
+    mov ah,9
+    lea dx,order_placed_str
+    int 21h
+    new_line
+
+
+    ret
+
+
+
+
+PLACE_ORDER_EMPTY:
+    mov ah,9
+    lea dx,cart_empty_str
+    int 21h
+    new_line
+    ret
+
+
+
+
+PLACE_ORDER_HISTORY_FULL:
+    mov ah,9
+    lea dx,history_full_str
+    int 21h
+    new_line
+    ret
+
+
+PLACE_ORDER ENDP
+
+
+
+
+
+
+; Order History
+
+
+
+
+ORDER_HISTORY PROC
+
+
+    mov al,Current_User
+    mov ah,0
+    mov si,ax
+
+
+    mov al,ORDER_COUNT_ARRAY[si]
+    mov Current_Order_Count,al
+
+
+    cmp al,0
+    je ORDER_HISTORY_EMPTY
+
+
+    mov ah,9
+    lea dx,history_header_str
+    int 21h
+    new_line
+
+
+    mov History_Order_Index,0
+
+
+ORDER_HISTORY_MAIN_LOOP:
+
+
+    mov al,History_Order_Index
+    cmp al,Current_Order_Count
+    jae ORDER_HISTORY_EXIT
+
+
+    mov ah,9
+    lea dx,order_no_str
+    int 21h
+
+
+    mov ah,2
+    mov dl,History_Order_Index
+    inc dl
+    add dl,30h
+    int 21h
+    new_line
+
+
+    ; Print order total
+    mov al,Current_User
+    mov ah,0
+    mov bl,5
+    mul bl
+
+
+    mov bl,History_Order_Index
+    mov bh,0
+    add ax,bx
+
+
+    shl ax,1
+    mov si,ax
+
+
+    mov ax,ORDER_TOTAL_ARRAY[si]
+    mov Current_Total,ax
+
+
+    mov ah,9
+    lea dx,history_total_str
+    int 21h
+
+
+    Five_Digit_out Current_Total
+    new_line
+
+
+    ; Calculate order quantity base:
+    ; user * 25 + order_index * 5
+    mov al,Current_User
+    mov ah,0
+    mov bl,25
+    mul bl
+    mov bx,ax
+
+
+    mov al,History_Order_Index
+    mov ah,0
+    mov cl,5
+    mul cl
+
+
+    add bx,ax
+    mov Order_Base_Offset,bx
+
+
+    mov Product_Index,1
+
+
+ORDER_HISTORY_ITEM_LOOP:
+
+
+    mov al,Product_Index
+    cmp al,6
+    jae ORDER_HISTORY_NEXT_ORDER
+
+
+    mov al,Product_Index
+    dec al
+    mov ah,0
+
+
+    mov si,Order_Base_Offset
+    add si,ax
+
+
+    mov al,ORDER_QTY_ARRAY[si]
+    cmp al,0
+    je ORDER_HISTORY_NEXT_ITEM
+
+
+    mov Current_Qty,al
+
+
+    mov al,Product_Index
+    mov Current_Product,al
+
+
+    mov ah,9
+    lea dx,product_str
+    int 21h
+
+
+    call PRINT_PRODUCT_NAME
+
+
+    mov ah,9
+    lea dx,qty_str
+    int 21h
+
+
+    One_Digit_out Current_Qty
+
+
+    mov ah,9
+    lea dx,price_str
+    int 21h
+
+
+    call GET_PRODUCT_PRICE
+    Five_Digit_out Current_Price
+
+
+    new_line
+
+
+
+
+ORDER_HISTORY_NEXT_ITEM:
+    inc Product_Index
+    jmp ORDER_HISTORY_ITEM_LOOP
+
+
+
+
+ORDER_HISTORY_NEXT_ORDER:
+    new_line
+    inc History_Order_Index
+    jmp ORDER_HISTORY_MAIN_LOOP
+
+
+
+
+ORDER_HISTORY_EMPTY:
+    mov ah,9
+    lea dx,no_history_str
+    int 21h
+    new_line
+    ret
+
+
+
+
+ORDER_HISTORY_EXIT:
+    ret
+
+
+ORDER_HISTORY ENDP
+
+
+
+
+END MAIN
